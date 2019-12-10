@@ -4,7 +4,7 @@
 #include <jni.h>
 #include "aubio.h"
 
-jfieldID getPtrFieldId(JNIEnv * env, jobject obj)
+static jfieldID getPtrFieldId(JNIEnv * env, jobject obj)
 {
     static jfieldID ptrFieldId = 0;
 
@@ -18,7 +18,7 @@ jfieldID getPtrFieldId(JNIEnv * env, jobject obj)
     return ptrFieldId;
 }
 
-jfieldID getInputFieldId(JNIEnv * env, jobject obj)
+static jfieldID getInputFieldId(JNIEnv * env, jobject obj)
 {
     static jfieldID ptrFieldId = 0;
 
@@ -32,7 +32,7 @@ jfieldID getInputFieldId(JNIEnv * env, jobject obj)
     return ptrFieldId;
 }
 
-jfieldID getPitchFieldId(JNIEnv * env, jobject obj)
+static jfieldID getPitchFieldId(JNIEnv * env, jobject obj)
 {
     static jfieldID ptrFieldId = 0;
 
@@ -47,7 +47,7 @@ jfieldID getPitchFieldId(JNIEnv * env, jobject obj)
 }
 
 
-void Java_com_example_aubio_MainActivity_initPitch(JNIEnv * env, jobject obj, jint sampleRate, jint bufferSize)
+void Java_com_example_aubio_Pitch_initPitch(JNIEnv * env, jobject obj, jint sampleRate, jint bufferSize)
 {
     unsigned int win_s = (unsigned int) bufferSize; // window size
     unsigned int hop_s = win_s / 4; // hop size
@@ -63,7 +63,7 @@ void Java_com_example_aubio_MainActivity_initPitch(JNIEnv * env, jobject obj, ji
     (*env)->SetLongField(env, obj, getPitchFieldId(env, obj), (jlong) (pitch));
 }
 
-jfloat Java_com_example_aubio_MainActivity_getPitch(JNIEnv * env, jobject obj, jfloatArray inputArray)
+jfloat Java_com_example_aubio_Pitch_getPitch(JNIEnv * env, jobject obj, jfloatArray inputArray)
 {
     aubio_pitch_t * o = (aubio_pitch_t *) (*env)->GetLongField(env, obj, getPtrFieldId(env, obj));
     fvec_t *input = (fvec_t *) (*env)->GetLongField(env, obj, getInputFieldId(env, obj));
@@ -92,7 +92,7 @@ jfloat Java_com_example_aubio_MainActivity_getPitch(JNIEnv * env, jobject obj, j
     return freq;
 }
 
-void Java_com_example_aubio_MainActivity_cleanupPitch(JNIEnv * env, jobject obj)
+void Java_com_example_aubio_Pitch_cleanupPitch(JNIEnv * env, jobject obj)
 {
     aubio_pitch_t * o = (aubio_pitch_t *) (*env)->GetLongField(env, obj, getPtrFieldId(env, obj));
     fvec_t *input = (fvec_t *) (*env)->GetLongField(env, obj, getInputFieldId(env, obj));
@@ -101,6 +101,5 @@ void Java_com_example_aubio_MainActivity_cleanupPitch(JNIEnv * env, jobject obj)
     del_fvec (pitch);
     del_fvec (input);
     aubio_cleanup ();
-
 }
 
