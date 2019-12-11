@@ -57,7 +57,7 @@ void Java_com_example_aubio_MainActivity_initPitch(JNIEnv * env, jobject obj, ji
     fvec_t *pitch = new_fvec (1);
 //    aubio_pitch_set_silence(o, -10000);
     aubio_pitch_set_tolerance(o, 0.70);
-    aubio_pitch_set_unit(o, "Hz");
+    aubio_pitch_set_unit(o, "midi");
     (*env)->SetLongField(env, obj, getPtrFieldId(env, obj), (jlong) (o));
     (*env)->SetLongField(env, obj, getInputFieldId(env, obj), (jlong) (input));
     (*env)->SetLongField(env, obj, getPitchFieldId(env, obj), (jlong) (pitch));

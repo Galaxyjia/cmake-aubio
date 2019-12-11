@@ -88,10 +88,12 @@ public class MainActivity extends AppCompatActivity {
             amountRead = audioRecord.read(intermediaryBuffer, 0, readSize);
             buffer = shortArrayToFloatArray(intermediaryBuffer);
             final float frequency = getPitch(buffer);
+            System.out.println(Math.round(frequency));
+
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    ((TextView) findViewById(R.id.pitchView)).setText(String.valueOf(frequency));
+                    ((TextView) findViewById(R.id.pitchView)).setText(String.valueOf(Math.round(frequency)));
                 }
             });
         }
