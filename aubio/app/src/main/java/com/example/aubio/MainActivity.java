@@ -52,7 +52,7 @@ public class MainActivity extends AppCompatActivity {
     private void init() {
         int readSize = bufferSize / 4;
         intermediaryBuffer = new short[readSize];
-        notes=new Notes(sampleRate, bufferSize);
+        notes=new Notes(sampleRate, readSize);
         System.out.println("init");
     }
 
@@ -87,11 +87,14 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void run() {
                     TextView pitchView=(TextView) findViewById(R.id.pitchView);
-                    String text=String.valueOf(results[0])+","
+                    if(results!=null && results[0]!=0){
+                        String text=String.valueOf(results[0])+","
                                 +String.valueOf(results[1])+","
                                 +String.valueOf(results[2]);
-                    System.out.println(text);
-                    pitchView.setText(text);
+                        System.out.println(text);
+                        pitchView.setText(text);
+                    }
+
                 }
             });
         }
