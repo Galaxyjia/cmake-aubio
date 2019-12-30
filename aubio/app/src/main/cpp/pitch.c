@@ -4,7 +4,7 @@
 #include <jni.h>
 #include "aubio.h"
 
-jfieldID getPtrFieldId(JNIEnv * env, jobject obj)
+static jfieldID getPtrFieldId(JNIEnv * env, jobject obj)
 {
     static jfieldID ptrFieldId = 0;
 
@@ -18,7 +18,7 @@ jfieldID getPtrFieldId(JNIEnv * env, jobject obj)
     return ptrFieldId;
 }
 
-jfieldID getInputFieldId(JNIEnv * env, jobject obj)
+static jfieldID getInputFieldId(JNIEnv * env, jobject obj)
 {
     static jfieldID ptrFieldId = 0;
 
@@ -32,14 +32,13 @@ jfieldID getInputFieldId(JNIEnv * env, jobject obj)
     return ptrFieldId;
 }
 
-jfieldID getPitchFieldId(JNIEnv * env, jobject obj)
+static jfieldID getOutputFieldId(JNIEnv * env, jobject obj)
 {
     static jfieldID ptrFieldId = 0;
-
     if (!ptrFieldId)
     {
         jclass c = (*env)->GetObjectClass(env, obj);
-        ptrFieldId = (*env)->GetFieldID(env, c, "pitch", "J");
+        ptrFieldId = (*env)->GetFieldID(env, c, "output", "J");
         (*env)->DeleteLocalRef(env, c);
     }
 
@@ -47,33 +46,42 @@ jfieldID getPitchFieldId(JNIEnv * env, jobject obj)
 }
 
 
-void Java_com_example_aubio_MainActivity_initPitch(JNIEnv * env, jobject obj, jint sampleRate, jint bufferSize)
+void Java_com_example_aubio_Notes_initNotes(JNIEnv * env, jobject obj, jint sampleRate, jint bufferSize, jint hopSize)
 {
-    unsigned int win_s = (unsigned int) bufferSize; // window size
-    unsigned int hop_s = win_s / 4; // hop size
     unsigned int samplerate = (unsigned int) sampleRate; // samplerate
-    aubio_pitch_t * o = new_aubio_pitch ("yinfft", win_s, hop_s, samplerate);
-    fvec_t *input = new_fvec (hop_s); // input buffer
-    fvec_t *pitch = new_fvec (1);
-//    aubio_pitch_set_silence(o, -10000);
-    aubio_pitch_set_tolerance(o, 0.70);
-    aubio_pitch_set_unit(o, "midi");
+    unsigned int buf_size = (unsigned int) bufferSize; // window size
+    unsigned int hop_size = (unsigned int) hopSize; // hop size
+
+
+    aubio_notes_t * o = new_aubio_notes("default", buf_size, hop_size, samplerate);
+    fvec_t *input = new_fvec (buf_size); // input buffer
+    fvec_t *output = new_fvec (3);
+
     (*env)->SetLongField(env, obj, getPtrFieldId(env, obj), (jlong) (o));
     (*env)->SetLongField(env, obj, getInputFieldId(env, obj), (jlong) (input));
-    (*env)->SetLongField(env, obj, getPitchFieldId(env, obj), (jlong) (pitch));
+    (*env)->SetLongField(env, obj, getOutputFieldId(env, obj), (jlong) (output));
 }
 
-jfloat Java_com_example_aubio_MainActivity_getPitch(JNIEnv * env, jobject obj, jfloatArray inputArray)
+/**
+ * @brief Get notes from buffer
+ *
+ * @param env
+ * @param obj
+ * @param inputArray
+ * @return jfloatArray
+ */
+jfloatArray Java_com_example_aubio_Notes_getNotes(JNIEnv * env, jobject obj, jfloatArray inputArray)
 {
-    aubio_pitch_t * o = (aubio_pitch_t *) (*env)->GetLongField(env, obj, getPtrFieldId(env, obj));
+    aubio_notes_t *ptr = (aubio_notes_t *) (*env)->GetLongField(env, obj, getPtrFieldId(env, obj));
     fvec_t *input = (fvec_t *) (*env)->GetLongField(env, obj, getInputFieldId(env, obj));
-    fvec_t *pitch = (fvec_t *) (*env)->GetLongField(env, obj, getPitchFieldId(env, obj)); // input buffer
+    fvec_t *output = (fvec_t *) (*env)->GetLongField(env, obj, getOutputFieldId(env, obj)); // input buffer
 
     jsize len = (*env)->GetArrayLength(env, inputArray);
     if(len != input->length) {
-        return len;
+        return NULL;
     }
 
+    jfloatArray ret_array=(*env)->NewFloatArray(env, 3);
     jfloat *body = (*env)->GetFloatArrayElements(env, inputArray, 0);
     // 1. copy inputArray to fvec_t* input (can be optimised)
     for(u_int i = 0; i < len; i++) {
@@ -82,25 +90,46 @@ jfloat Java_com_example_aubio_MainActivity_getPitch(JNIEnv * env, jobject obj, j
     (*env)->ReleaseFloatArrayElements(env, inputArray, body, 0);
 
 
-    float freq = 0;
-    if(aubio_silence_detection(input, 45) == 0) {
-        aubio_pitch_do (o, input, pitch);
-        freq = fvec_get_sample(pitch, 0);
-    } else {
-        freq = 0;
+    aubio_notes_do(ptr, input, output);
+    jfloat result[3]={0,0,0};
+
+    // did we get a note off?
+    if (output->data[2] != 0)
+    {
+        result[0]=output->data[0];
+        result[1]=output->data[1];
+        result[2]=output->data[2];
+        //send_noteon(lastmidi, 0);
     }
-    return freq;
+
+    // did we get a note on?
+    if (output->data[0] != 0)
+    {
+        result[0]=output->data[0];
+        result[1]=output->data[1];
+        result[2]=output->data[2];
+        //send_noteon(lastmidi, output->data[1]);
+    }
+
+    (*env)->SetFloatArrayRegion(env, ret_array, 0, 3, result);
+
+    return ret_array;
 }
 
-void Java_com_example_aubio_MainActivity_cleanupPitch(JNIEnv * env, jobject obj)
+/**
+ * @brief Cleanup notes, free memory
+ *
+ * @param env
+ * @param obj
+ */
+void Java_com_example_aubio_Notes_cleanupNotes(JNIEnv * env, jobject obj)
 {
-    aubio_pitch_t * o = (aubio_pitch_t *) (*env)->GetLongField(env, obj, getPtrFieldId(env, obj));
+    aubio_notes_t * o = (aubio_notes_t *) (*env)->GetLongField(env, obj, getPtrFieldId(env, obj));
     fvec_t *input = (fvec_t *) (*env)->GetLongField(env, obj, getInputFieldId(env, obj));
-    fvec_t *pitch = (fvec_t *) (*env)->GetLongField(env, obj, getPitchFieldId(env, obj)); // input buffer
-    del_aubio_pitch (o);
-    del_fvec (pitch);
+    fvec_t *output = (fvec_t *) (*env)->GetLongField(env, obj, getOutputFieldId(env, obj)); // input buffer
+    del_aubio_notes (o);
+    del_fvec (output);
     del_fvec (input);
     aubio_cleanup ();
-
 }
 

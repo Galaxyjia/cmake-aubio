@@ -14,6 +14,7 @@ android {
             cmake {
                 targets 'aubio'
                 cppFlags ""
+//                abiFilters 'x86', 'x86_64', 'armeabi', 'armeabi-v7a'//不同平台so
             }
         }
     }

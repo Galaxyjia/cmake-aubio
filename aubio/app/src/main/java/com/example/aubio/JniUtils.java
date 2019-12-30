@@ -1,7 +1,19 @@
-//package com.example.aubio;
+package com.example.aubio;
 //
-//public class JniUtils {
+public class JniUtils {
 //
-//    //一定要有这一句，否则不会生成so库
-//    System.loadLibray("aubio");
-//}
+    static {
+        System.loadLibrary("aubio");
+    //        System.loadLibrary("pitch");
+    }
+
+    public native String  stringFromJNI();
+
+    public native int add(int x, int y);
+
+    public native String sayHello(String s);
+
+    public native int[] increaseArrayEles(int[] intArray);
+
+    public  native int checkPwd(String pwd);
+}
