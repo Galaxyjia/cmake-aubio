@@ -1,6 +1,7 @@
+*.iml
 .*
 !.vscode
 !.gitignore
 /build
 /captures
-
+/local.properties
