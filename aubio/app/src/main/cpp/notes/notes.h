@@ -44,8 +44,17 @@ typedef struct _aubio_notes_t aubio_notes_t;
   \return newly created ::aubio_notes_t
 
 */
-aubio_notes_t * new_aubio_notes (const char_t * method,
-    uint_t buf_size, uint_t hop_size, uint_t samplerate);
+aubio_notes_t * new_aubio_notes (
+    const char_t * method,
+    uint_t buf_size, 
+    uint_t hop_size, 
+    uint_t samplerate,
+    float notes_silence,
+    float notes_release_drop,
+    float cent_precision,
+    float notes_minioi_ms,
+    uint_t median
+);
 
 /** delete notes detection object
 
@@ -66,7 +75,13 @@ void del_aubio_notes(aubio_notes_t * o);
    - 2. the midi note to turn off
 
 */
-void aubio_notes_do (aubio_notes_t *o, const fvec_t * input, fvec_t * output);
+void aubio_notes_do (
+  aubio_notes_t *o, 
+  const fvec_t * input, 
+  fvec_t * output,
+  uint_t min_note,
+  uint_t max_note
+);
 
 /** set notes detection silence threshold
 

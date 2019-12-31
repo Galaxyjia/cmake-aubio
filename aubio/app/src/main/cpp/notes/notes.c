@@ -26,12 +26,18 @@
 #include "../onset/onset.h"
 #include "../notes/notes.h"
 
-#define AUBIO_DEFAULT_NOTES_SILENCE -70.
-#define AUBIO_DEFAULT_NOTES_RELEASE_DROP 10.
-// increase to 10. for .1  cent precision
-//      or to 100. for .01 cent precision
-#define AUBIO_DEFAULT_CENT_PRECISION 1.
-#define AUBIO_DEFAULT_NOTES_MINIOI_MS 30.
+// #define AUBIO_DEFAULT_NOTES_SILENCE -70.
+// #define AUBIO_DEFAULT_NOTES_RELEASE_DROP 10.
+// // increase to 10. for .1  cent precision
+// //      or to 100. for .01 cent precision
+// #define AUBIO_DEFAULT_CENT_PRECISION 1.
+// #define AUBIO_DEFAULT_NOTES_MINIOI_MS 30.
+
+static float aubio_default_notes_silence=-70.;
+static float aubio_default_notes_release_drop=10.;
+static float aubio_default_cent_precision=1.;
+static float aubio_default_notes_minioi_ms=30.;
+
 
 struct _aubio_notes_t {
 
@@ -64,61 +70,75 @@ struct _aubio_notes_t {
   smpl_t release_drop_level;
 };
 
-aubio_notes_t * new_aubio_notes (const char_t * method,
-    uint_t buf_size, uint_t hop_size, uint_t samplerate) {
-  aubio_notes_t *o = AUBIO_NEW(aubio_notes_t);
+aubio_notes_t * new_aubio_notes (
+    const char_t * method,
+    uint_t buf_size, 
+    uint_t hop_size, 
+    uint_t samplerate,
+    float notes_silence,
+    float notes_release_drop,
+    float cent_precision,
+    float notes_minioi_ms,
+    uint_t median
+){
+    aubio_notes_t *o = AUBIO_NEW(aubio_notes_t);
 
-  const char_t * onset_method = "default";
-  const char_t * pitch_method = "default";
+    aubio_default_notes_silence=notes_silence;
+    aubio_default_notes_release_drop=notes_release_drop;
+    aubio_default_cent_precision=cent_precision;
+    aubio_default_notes_minioi_ms=notes_minioi_ms;
 
-  o->onset_buf_size = buf_size;
-  o->pitch_buf_size = buf_size * 4;
-  o->hop_size = hop_size;
+    const char_t * onset_method = "default";
+    const char_t * pitch_method = "default";
 
-  o->onset_threshold = 0.;
-  o->pitch_tolerance = 0.;
+    o->onset_buf_size = buf_size;
+    o->pitch_buf_size = buf_size * 4;
+    o->hop_size = hop_size;
 
-  o->samplerate = samplerate;
+    o->onset_threshold = 0.;
+    o->pitch_tolerance = 0.;
 
-  o->median = 6;
+    o->samplerate = samplerate;
 
-  o->isready = 0;
+    o->median = median;
 
-  o->onset = new_aubio_onset (onset_method, o->onset_buf_size, o->hop_size, o->samplerate);
-  if (o->onset == NULL) goto fail;
-  if (o->onset_threshold != 0.) aubio_onset_set_threshold (o->onset, o->onset_threshold);
-  o->onset_output = new_fvec (1);
+    o->isready = 0;
 
-  o->pitch = new_aubio_pitch (pitch_method, o->pitch_buf_size, o->hop_size, o->samplerate);
-  if (o->pitch == NULL) goto fail;
-  if (o->pitch_tolerance != 0.) aubio_pitch_set_tolerance (o->pitch, o->pitch_tolerance);
-  aubio_pitch_set_unit (o->pitch, "midi");
-  o->pitch_output = new_fvec (1);
+    o->onset = new_aubio_onset (onset_method, o->onset_buf_size, o->hop_size, o->samplerate);
+    if (o->onset == NULL) goto fail;
+    if (o->onset_threshold != 0.) aubio_onset_set_threshold (o->onset, o->onset_threshold);
+    o->onset_output = new_fvec (1);
 
-  if (strcmp(method, "default") != 0) {
-    AUBIO_ERR("notes: unknown notes detection method \"%s\"\n", method);
-    goto fail;
-  }
-  o->note_buffer = new_fvec(o->median);
-  o->note_buffer2 = new_fvec(o->median);
+    o->pitch = new_aubio_pitch (pitch_method, o->pitch_buf_size, o->hop_size, o->samplerate);
+    if (o->pitch == NULL) goto fail;
+    if (o->pitch_tolerance != 0.) aubio_pitch_set_tolerance (o->pitch, o->pitch_tolerance);
+    aubio_pitch_set_unit (o->pitch, "midi");
+    o->pitch_output = new_fvec (1);
 
-  if (!o->onset_output || !o->pitch_output ||
-      !o->note_buffer || !o->note_buffer2) goto fail;
+    if (strcmp(method, "default") != 0) {
+      AUBIO_ERR("notes: unknown notes detection method \"%s\"\n", method);
+      goto fail;
+    }
+    o->note_buffer = new_fvec(o->median);
+    o->note_buffer2 = new_fvec(o->median);
 
-  o->curnote = -1.;
-  o->newnote = 0.;
+    if (!o->onset_output || !o->pitch_output ||
+        !o->note_buffer || !o->note_buffer2) goto fail;
 
-  aubio_notes_set_silence(o, AUBIO_DEFAULT_NOTES_SILENCE);
-  aubio_notes_set_minioi_ms (o, AUBIO_DEFAULT_NOTES_MINIOI_MS);
+    o->curnote = -1.;
+    o->newnote = 0.;
 
-  o->last_onset_level = AUBIO_DEFAULT_NOTES_SILENCE;
-  o->release_drop_level = AUBIO_DEFAULT_NOTES_RELEASE_DROP;
+    aubio_notes_set_silence(o, aubio_default_notes_silence);
+    aubio_notes_set_minioi_ms (o, aubio_default_notes_minioi_ms);
 
-  return o;
+    o->last_onset_level = aubio_default_notes_silence;
+    o->release_drop_level = aubio_default_notes_release_drop;
 
-fail:
-  del_aubio_notes(o);
-  return NULL;
+    return o;
+
+  fail:
+    del_aubio_notes(o);
+    return NULL;
 }
 
 uint_t aubio_notes_set_silence(aubio_notes_t *o, smpl_t silence)
@@ -180,7 +200,7 @@ note_append (fvec_t * note_buffer, smpl_t curnote)
     note_buffer->data[i] = note_buffer->data[i + 1];
   }
   //note_buffer->data[note_buffer->length - 1] = ROUND(10.*curnote)/10.;
-  note_buffer->data[note_buffer->length - 1] = ROUND(AUBIO_DEFAULT_CENT_PRECISION*curnote);
+  note_buffer->data[note_buffer->length - 1] = ROUND(aubio_default_cent_precision*curnote);
   return;
 }
 
@@ -188,12 +208,17 @@ static smpl_t
 aubio_notes_get_latest_note (aubio_notes_t *o)
 {
   fvec_copy(o->note_buffer, o->note_buffer2);
-  return fvec_median (o->note_buffer2) / AUBIO_DEFAULT_CENT_PRECISION;
+  return fvec_median (o->note_buffer2) / aubio_default_cent_precision;
 }
 
 
-void aubio_notes_do (aubio_notes_t *o, const fvec_t * input, fvec_t * notes)
-{
+void aubio_notes_do (
+  aubio_notes_t *o, 
+  const fvec_t * input, 
+  fvec_t * notes,
+  uint_t min_note,
+  uint_t max_note
+){
   smpl_t new_pitch, curlevel;
   fvec_zeros(notes);
   aubio_onset_do(o->onset, input, o->onset_output);
@@ -260,7 +285,7 @@ void aubio_notes_do (aubio_notes_t *o, const fvec_t * input, fvec_t * notes)
         o->newnote = aubio_notes_get_latest_note(o);
         o->curnote = o->newnote;
         /* get and send new one */
-        if (o->curnote>45){
+        if (o->curnote>=min_note && o->curnote<=max_note){
           //send_noteon(curnote,127+(int)floor(curlevel));
           notes->data[0] = o->curnote;
           notes->data[1] = 127 + (int) floor(curlevel);

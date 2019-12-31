@@ -46,14 +46,34 @@ static jfieldID getOutputFieldId(JNIEnv * env, jobject obj)
 }
 
 
-void Java_com_example_aubio_Notes_initNotes(JNIEnv * env, jobject obj, jint sampleRate, jint bufferSize, jint hopSize)
-{
+void Java_com_example_aubio_Notes_initNotes(
+    JNIEnv * env, 
+    jobject obj, 
+    jint sampleRate, 
+    jint bufferSize, 
+    jint hopSize,
+    jfloat notesSilence,
+    jfloat notesReleaseDrop,
+    jfloat centPrecision,
+    jfloat notesMinioiMs,
+    jint median
+){
     unsigned int samplerate = (unsigned int) sampleRate; // samplerate
     unsigned int buf_size = (unsigned int) bufferSize; // window size
     unsigned int hop_size = (unsigned int) hopSize; // hop size
+    unsigned int imedian=(unsigned int) median; // hop size
 
-
-    aubio_notes_t * o = new_aubio_notes("default", buf_size, hop_size, samplerate);
+    aubio_notes_t * o = new_aubio_notes(
+        "default", 
+        buf_size, 
+        hop_size, 
+        samplerate,
+        notesSilence,
+        notesReleaseDrop,
+        centPrecision,
+        notesMinioiMs,
+        imedian
+    );
     fvec_t *input = new_fvec (buf_size); // input buffer
     fvec_t *output = new_fvec (3);
 
@@ -70,8 +90,13 @@ void Java_com_example_aubio_Notes_initNotes(JNIEnv * env, jobject obj, jint samp
  * @param inputArray
  * @return jfloatArray
  */
-jfloatArray Java_com_example_aubio_Notes_getNotes(JNIEnv * env, jobject obj, jfloatArray inputArray)
-{
+jfloatArray Java_com_example_aubio_Notes_getNotes(
+    JNIEnv * env, 
+    jobject obj, 
+    jfloatArray inputArray,
+    jint minNote,
+    jint maxNote
+){
     aubio_notes_t *ptr = (aubio_notes_t *) (*env)->GetLongField(env, obj, getPtrFieldId(env, obj));
     fvec_t *input = (fvec_t *) (*env)->GetLongField(env, obj, getInputFieldId(env, obj));
     fvec_t *output = (fvec_t *) (*env)->GetLongField(env, obj, getOutputFieldId(env, obj)); // input buffer
@@ -90,7 +115,10 @@ jfloatArray Java_com_example_aubio_Notes_getNotes(JNIEnv * env, jobject obj, jfl
     (*env)->ReleaseFloatArrayElements(env, inputArray, body, 0);
 
 
-    aubio_notes_do(ptr, input, output);
+    unsigned int min_note=(unsigned int) minNote;
+    unsigned int max_note=(unsigned int) maxNote;
+
+    aubio_notes_do(ptr, input, output, min_note, max_note);
     jfloat result[3]={0,0,0};
 
     // did we get a note off?
