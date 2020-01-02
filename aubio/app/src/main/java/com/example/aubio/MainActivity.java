@@ -52,8 +52,26 @@ public class MainActivity extends AppCompatActivity {
     private void init() {
         int readSize = bufferSize / 4;
         intermediaryBuffer = new short[readSize];
-        notes=new Notes(sampleRate, readSize);
-        System.out.println("init");
+        int hopSize = 256;
+        float notesSilence = -70.0f;
+        float notesReleaseDrop = 10.0f;
+        float centPrecision = 1.0f;
+        float notesMinioiMs = 15.0f;
+        int median = 3;
+
+        notes=new Notes(sampleRate, readSize ,hopSize, notesSilence, notesReleaseDrop, centPrecision, notesMinioiMs, median);
+        TextView configView=(TextView) findViewById(R.id.configView);
+        String configtext = "sampleRate: "+String.valueOf(sampleRate)+"\n"
+                            +"readSize: "+String.valueOf(readSize)+"\n"
+                            +"hopSize: "+String.valueOf(hopSize)+"\n"
+                            +"notesSilence: "+String.valueOf(notesSilence)+"\n"
+                            +"notesReleaseDrop: "+String.valueOf(notesReleaseDrop)+"\n"
+                            +"centPrecision: "+String.valueOf(centPrecision)+"\n"
+                            +"notesMinioiMs: "+String.valueOf(notesMinioiMs)+"\n"
+                            +"median: "+String.valueOf(median)+"\n";
+
+        configView.setText(configtext);
+
     }
 
 
@@ -80,7 +98,6 @@ public class MainActivity extends AppCompatActivity {
     private void findNote() {
         while (isRecording) {
             int amountRead = audioRecord.read(intermediaryBuffer, 0, bufferSize / 4);
-
             final float[] results = notes.get(intermediaryBuffer);
 
             runOnUiThread(new Runnable() {
@@ -88,13 +105,12 @@ public class MainActivity extends AppCompatActivity {
                 public void run() {
                     TextView pitchView=(TextView) findViewById(R.id.pitchView);
                     if(results!=null && results[0]!=0){
-                        String text=String.valueOf(results[0])+","
-                                +String.valueOf(results[1])+","
-                                +String.valueOf(results[2]);
+                        String text="note: "+String.valueOf(results[0])+"\n"
+                                    +"velocity: "+String.valueOf(results[1])+"\n"
+                                    +"lastnote: "+String.valueOf(results[2]);
                         System.out.println(text);
                         pitchView.setText(text);
                     }
-
                 }
             });
         }
